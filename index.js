@@ -8,9 +8,14 @@ const routes = require('./routes');
 const { default: axios } = require("axios");
 
 const { socketService } = require('./service/socket'); // Import the socket service
+const admin = require("firebase-admin");
+const serviceAccount = require("./service-account-key.json");
 
 //====================================================
-
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount),
+// });
+//====================================================
 // Use the session middleware
 
 app.use(

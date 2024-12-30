@@ -161,6 +161,7 @@ module.exports = {
       const passwordEncrypted = await bcrypt.hash(password, 10);
 
 
+      console.log('membersData', membersData);
 
       for (const memberData of membersData) {
         if (!memberData?.name || !memberData?.email || !memberData?.mobile) {
@@ -177,6 +178,7 @@ module.exports = {
             parentUser: userId,
             password: passwordEncrypted
           });
+          console.log('newMember', newMember);
 
           const notifyTo = await notificationModel.create({
             userId,
@@ -1059,13 +1061,13 @@ module.exports = {
         const memberAssignments = assignments.filter((assignment) => {
           // console.log("assignment.memberId ===", assignment.memberId);
           // console.log("member._id ===", member._id);
-      
+
           return assignment.memberId.toString() === member.memberId._id.toString();
           // return assignment.memberId=== member.memberId._id;
         });
-      
+
         // console.log("memberAssignments ===", memberAssignments);
-      
+
         // Count the total, pending, and completed assignments for the member
         return {
           name: member.memberId?.name || "Unknown", // Fallback for name
@@ -1074,7 +1076,7 @@ module.exports = {
           completed: memberAssignments.filter((a) => a.status === "Completed").length,
         };
       });
-      
+
       // Send the response
       return res.status(200).json({
         success: true,

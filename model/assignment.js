@@ -25,14 +25,23 @@ const assignmentSchema = new mongoose.Schema({
             required: true,
         },
     },
+    time: {
+        type: String,
+        // default: Date.now,
+    },
     assignedAt: {
+
         type: Date,
         default: Date.now,
+
     },
     status: {
         type: String,
-        enum: ['Pending', 'Completed'],
-        default: 'Pending',
+        enum: ['pending', 'completed','reached'],
+        default: 'pending',
+    },
+    eventName: {
+        type: String,
     },
     // Optional field for tracking if the member entered or exited the assigned location
     entryTime: Date,

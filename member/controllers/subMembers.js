@@ -16,10 +16,10 @@ module.exports = {
         return res.status(404).json({ message: "Member not found" });
       }
 
-      const { parentUser, groupType } = memberData;
+      const { parentUser, channelId } = memberData;
 
       // Find colleagues based on parentUser and groupType
-      const team = await memberModel.find({ parentUser: parentUser._id, groupType });
+      const team = await memberModel.find({  channelId });
 
       res.status(200).json({
         message: "Team members retrieved successfully",

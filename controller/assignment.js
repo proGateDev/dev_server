@@ -1,12 +1,61 @@
 const assignmentModel = require('../model/assignment');
+const { getAddressFromCoordinates_v1 } = require('../service/geoCode');
+const axios = require('axios');
 
+
+
+
+
+
+
+
+
+
+const getAddress = async (latitude, longitude) => {
+
+
+
+
+    // console.log('latitude aaya____________ : ', latitude);
+    const accessToken =
+        'sk.eyJ1IjoicHJvZGV2MzY5IiwiYSI6ImNtM21vaHppbzB5azQycXF6MTJyZjJuamcifQ.ZnpKclc0DrYzGN1fA1jqNQ'; // Replace with your Mapbox token
+    const url = `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${longitude}&latitude=${latitude}&access_token=${accessToken}&limit=1`;
+
+    try {
+        console.log('staerted --');
+
+        const response = await axios.get(url);
+        // console.log('response ________________ : ',response.data.features[0].properties.full_address);
+        // console.log('response ________________ : ', response?.data?.features[0]?.properties?.context?.locality?.name);
+
+        // if (response.data && response.data.features.length > 0) {
+        if (response.data) {
+
+
+            return response.data
+        } else {
+            console.log('Address not found');
+        }
+    } catch (error) {
+        console.error('Error fetching address:', error);
+        console.log('Error fetching address');
+    }
+};
+
+
+
+
+
+//==========================================
 module.exports = {
     assignment: async (req, res) => {
         try {
-            console.log(' assigning this .......', req.body);
             const userId = req.userId
-            console.log(' ---- userId   -----------', userId);
-            const { memberId, locationName, coordinates } = req.body;
+            // console.log(' ---- userId   -----------', userId);
+            const { memberId, locationName, coordinates, dateTime, eventName } = req.body;
+            // console.log(' assigning this .......', coordinates?.lat);
+            let locationNameDecodedResponse = await getAddress(coordinates?.lat, coordinates?.lng)
+            let locationNameDecoded = locationNameDecodedResponse?.features[0]?.properties?.place_formatted
 
             // Check if all required fields are provided
             if (
@@ -24,8 +73,11 @@ module.exports = {
             const newAssignment = new assignmentModel({
                 memberId,
                 userId,
-                locationName,
+                locationName: locationNameDecoded,
                 coordinates,
+                assignedAt: dateTime?.date,
+                time: dateTime?.time,
+                eventName
             });
 
             // Save the assignment to the database
@@ -129,28 +181,29 @@ module.exports = {
             // Ensure startDate and endDate are in a valid format
             const start = new Date(startDate);
             const end = new Date(endDate);
-            console.log('-____ DATES _______:', start, end);
+            // console.log('-____ DATES _______:', start, end);
 
             if (isNaN(start) || isNaN(end)) {
                 return res.status(400).json({ message: 'Invalid date format' });
             }
 
-            console.log('Getting assignments for member:', memberId);
+            // console.log('Getting assignments for member:', memberId);
 
             // Fetch the assignments within the date range
             const memberAssignments = await assignmentModel.find({
                 memberId: memberId,
                 assignedAt: { $gte: start, $lte: end }, // Filter by assignmentDate within the date range
-            });
+            })
+            // console.log('memberAssignments', memberId);
 
             if (!memberAssignments || memberAssignments.length === 0) {
                 return res.status(404).json({ message: 'No assignments found for the given period' });
             }
+            console.log('memberAssignments', memberAssignments);
 
             // Prepare the member's general information
             const memberInfo = {
                 id: memberId,
-                name: 'Rohit Kushwaha', // Replace with actual member's name
                 totalTasks: memberAssignments.length,
                 pendingTasks: memberAssignments.filter(task => task.status === 'pending').length,
                 completedTasks: memberAssignments.filter(task => task.status === 'completed').length,
@@ -158,10 +211,12 @@ module.exports = {
                 // address: 'Gomati Nagar, Lucknow, Uttar Pradesh, 226011', // Replace with actual member address
                 tasks: memberAssignments.map(task => ({
                     taskId: task._id.toString(),
-                    taskName: task.taskName,
+                    taskName: task.eventName,
+                    locationName: task.locationName,
                     status: task.status,
                     location: task.coordinates,
-                    dateTime: task.assignedAt.toISOString(),
+                    date: task.assignedAt.toISOString(),
+                    time: task.time,
                 })),
             };
             // console.log('mil to ghaya ------------------');
@@ -175,7 +230,43 @@ module.exports = {
             console.error('Error fetching user assignments:', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
+    },
+    getMemberAssignmentById: async (req, res) => {
+        try {
+            const { assignmentId } = req.params; // Get startDate and endDate from request params
+
+            const memberId = req?.userId;
+
+
+
+            if ((!memberId)) {
+                return res.status(400).json({ message: 'Invalid memberId' });
+            }
+
+            // console.log('Getting assignments for member:', memberId);
+
+            // Fetch the assignments within the date range
+            const memberAssignments = await assignmentModel.find({
+                _id: assignmentId,
+            })
+
+            if (!memberAssignments || memberAssignments.length === 0) {
+                return res.status(404).json({ message: 'No assignments found ' });
+            }
+
+
+            res.status(200).json({
+                status: 200,
+                message: 'Assignment found successfully',
+                assignment: memberAssignments,
+            });
+
+        } catch (error) {
+            console.error('Error fetching user assignments:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
     }
+
 
 
 

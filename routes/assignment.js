@@ -12,6 +12,7 @@ router.post('/location',checkUserToken, trackController.assignment);
 
 
 router.get('/member/:startDate/:endDate', checkUserToken,trackController.getMemberAssignments);
+router.get('/member/:assignmentId', checkUserToken,trackController.getMemberAssignmentById);
 
 
 

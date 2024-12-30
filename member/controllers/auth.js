@@ -2,7 +2,14 @@ const memberModel = require("../models/profile");
 const { checkEncryptedPassword } = require('../../util/auth')
 const jwt = require('jsonwebtoken');
 const { onMemberVerified } = require("../../service/socket");
+const admin = require("firebase-admin");
+const serviceAccount = require("./service-account-key.json");
+
 //==================================================
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 
 module.exports = {
   login: async (req, res) => {
@@ -149,7 +156,7 @@ module.exports = {
       const member = await memberModel.findById(memberId);
 
       // if (member && !member.isApproved) {
-        if (member ) {
+      if (member) {
         member.isApproved = true;
         await member.save();
 
@@ -161,9 +168,24 @@ module.exports = {
           memberId: member._id,
         }
         onMemberVerified(memberVerifyingMessage)
+
         // console.log(' chala', chala);
-
-
+        const sendNotification = async (token) => {
+          try {
+            await admin.messaging().send({
+              token: token,
+              notification: {
+                title: "Verification Complete",
+                body: "A member has successfully verified their account!",
+              },
+            });
+            console.log("Notification sent successfully!");
+          } catch (error) {
+            console.error("Error sending notification:", error);
+          }
+        };
+        
+        sendNotification('fbdQsdUER2e7ToVQEurUhk:APA91bE5IOlTpz7gMkEYRrwdpMqgLu6KgSWc2CktoWmRs1NJhftsRlDhferm8ljGdiX09SwiDWko5A6c7Q1pjEPukiauJVINph1kxuyh4hCw1eBBu9ShSmc')
         return res.status(200).send('Member verified and notification sent');
       } else {
         return res.status(400).send('Member already approved');
