@@ -3,9 +3,11 @@ const { checkEncryptedPassword } = require('../../util/auth')
 const jwt = require('jsonwebtoken');
 const { onMemberVerified } = require("../../service/socket");
 const admin = require("firebase-admin");
-const serviceAccount = require("./service-account-key.json");
+require("dotenv").config();
+
 
 //==================================================
+const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
