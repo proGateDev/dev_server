@@ -103,12 +103,13 @@ module.exports = {
       const channelMembers = await channelMemberModel
         .find({ addedBy: userId, channelId: channelId })
         .populate("channelId", "name description") // Populate channel details
-        .populate("memberId", "name email mobile") // Populate member details
-        .select("channelId memberId role addedBy addedByModel joinedAt "); // Select specific fields
+        .populate("memberId") // Populate member details
+        // .select("channelId memberId role addedBy addedByModel joinedAt "); // Select specific fields
+      console.log('channelMembers', channelMembers);
 
-      const channelMembers_ = await channelMemberModel
-        .find({ id: channelId })
-      console.log('channelMembers_', channelMembers_);
+      // const channelMembers_ = await channelMemberModel
+      //   .find({ id: channelId })
+      // console.log('channelMembers_', channelMembers_);
 
 
       if (!channelMembers.length) {
@@ -119,24 +120,27 @@ module.exports = {
       }
 
       // Step 2: Format the response data
-      const result = channelMembers.map((channelMember) => ({
-        channelId: channelMember.channelId._id,
-        channelName: channelMember.channelId.name,
-        channelDescription: channelMember.channelId.description,
-        memberId: channelMember.memberId._id,
-        memberName: channelMember.memberId.name,
-        memberEmail: channelMember.memberId.email,
-        memberMobile: channelMember.memberId.mobile,
+      const result = channelMembers
+      .filter((channelMember) => channelMember.memberId?._id) // Filter out entries where memberId is null or undefined
+      .map((channelMember) => ({
+        channelId: channelMember.channelId?._id,
+        channelName: channelMember.channelId?.name,
+        channelDescription: channelMember.channelId?.description,
+        memberId: channelMember.memberId?._id, // Ensure you're accessing the memberId properly
+        memberName: channelMember.memberId?.name,
+        memberEmail: channelMember.memberId?.email,
+        memberMobile: channelMember.memberId?.mobile,
         role: channelMember.role,
         addedBy: channelMember.addedBy,
         addedByModel: channelMember.addedByModel,
         joinedAt: channelMember.joinedAt,
       }));
+    
 
       res.status(200).json({
         status: 200,
         message: "Members fetched successfully.",
-        data: result,
+        data: channelMembers,
         totalMembers: result.length,
       });
     } catch (error) {
