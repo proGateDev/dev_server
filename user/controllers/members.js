@@ -862,6 +862,7 @@ module.exports = {
 
       // Extract member IDs for attendance query
       const memberIds = channelMembers.map((member) => ObjectId(member.memberId._id));
+      console.log('memberIds', memberIds);
 
       // Fetch attendance records for the given date range for these members
       const attendanceRecords = await attendanceModel.find({
@@ -1005,11 +1006,10 @@ module.exports = {
 
   getChannelMembersAssignmentsByDateRange: async (req, res) => {
     try {
-      const userId = req.userId; // Assuming `checkUserToken` middleware attaches the user ID
+      const userId = req.userId;
       const channelId = req.params.channelId;
       const { startDate, endDate } = req.query;
 
-      // Validate `startDate` and `endDate`
       if (!startDate || !endDate) {
         return res.status(400).json({
           success: false,
@@ -1021,12 +1021,10 @@ module.exports = {
       const startOfRange = new Date(`${startDate}`);
       const endOfRange = new Date(`${endDate}`);
 
-      // 1. Get all members for the user within the specified channel
       const members = await channelMemberModel
         .find({ addedBy: userId, channelId })
         .populate("memberId");
 
-      // console.log('members', members);
 
 
 
@@ -1038,11 +1036,9 @@ module.exports = {
         });
       }
 
-      // Extract member IDs
       const memberIds = members?.map((member) => member?.memberId?._id);
+      console.log('memberIds', memberIds);
 
-      // console.log('membersmemberIds ',members[0], memberIds );
-      // 2. Get assignments for the specified date range for these members
       const assignments = await assignmentModel.find({
         memberId: { $in: memberIds },
         assignedAt: {
@@ -1054,26 +1050,27 @@ module.exports = {
         //   $lte: endOfRange,
         // },
       });
-
-      // 3. Prepare the response
       const response = members.map((member) => {
-        // console.log('members=================',member.memberId._id );
+        // Filter assignments for the current member
         const memberAssignments = assignments.filter((assignment) => {
-          // console.log("assignment.memberId ===", assignment.memberId);
-          // console.log("member._id ===", member._id);
-
           return assignment.memberId.toString() === member.memberId._id.toString();
-          // return assignment.memberId=== member.memberId._id;
         });
 
-        // console.log("memberAssignments ===", memberAssignments);
+        // Group assignments by status
+        const pendingAssignments = memberAssignments.filter((a) => a.status === "pending");
+        const completedAssignments = memberAssignments.filter((a) => a.status === "completed");
 
-        // Count the total, pending, and completed assignments for the member
         return {
-          name: member.memberId?.name || "Unknown", // Fallback for name
+          name: member.memberId?.name || "Unknown",
           totalAssignments: memberAssignments.length,
-          pending: memberAssignments.filter((a) => a.status === "Pending").length,
-          completed: memberAssignments.filter((a) => a.status === "Completed").length,
+          pending: {
+            count: pendingAssignments.length,
+            details: pendingAssignments,
+          },
+          completed: {
+            count: completedAssignments.length,
+            details: completedAssignments,
+          },
         };
       });
 
@@ -1081,6 +1078,8 @@ module.exports = {
       return res.status(200).json({
         success: true,
         data: response,
+        // count: assignments.length,
+        // assignments
       });
     } catch (error) {
       console.error("Error fetching assignments for the specified date range:", error);
@@ -1089,7 +1088,82 @@ module.exports = {
         message: "Server error. Please try again later.",
       });
     }
+  },
+
+
+
+  getMemberAssignmentById: async (req, res) => {
+    try {
+      const { assignmentId } = req.params; // Get startDate and endDate from request params
+
+      const memberId = req?.userId;
+
+
+
+      if ((!memberId)) {
+        return res.status(400).json({ message: 'Invalid memberId' });
+      }
+
+      // console.log('Getting assignments for member:', memberId);
+
+      // Fetch the assignments within the date range
+      const memberAssignments = await assignmentModel.find({
+        _id: assignmentId,
+      })
+
+      if (!memberAssignments || memberAssignments.length === 0) {
+        return res.status(404).json({ message: 'No assignments found ' });
+      }
+
+
+      res.status(200).json({
+        status: 200,
+        message: 'Assignment found successfully',
+        assignment: memberAssignments,
+      });
+
+    } catch (error) {
+      console.error('Error fetching user assignments:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  },
+  getUsersMemberAssignmentById: async (req, res) => {
+    try {
+      const { assignmentId, memberId } = req.params; // Get startDate and endDate from request params
+
+      // const memberId = req?.userId;
+      console.log(' assignmentId,memberId ---', req.params,assignmentId, memberId);
+
+
+
+      if ((!memberId)) {
+        return res.status(400).json({ message: 'Invalid memberId' });
+      }
+
+      // console.log('Getting assignments for member:', memberId);
+
+      // Fetch the assignments within the date range
+      const memberAssignments = await assignmentModel.find({
+        _id: assignmentId,
+      })
+
+      if (!memberAssignments || memberAssignments.length === 0) {
+        return res.status(404).json({ message: 'No assignments found ' });
+      }
+
+
+      res.status(200).json({
+        status: 200,
+        message: 'Assignment found successfully',
+        assignment: memberAssignments,
+      });
+
+    } catch (error) {
+      console.error('Error fetching user assignments:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   }
+
 
 
 

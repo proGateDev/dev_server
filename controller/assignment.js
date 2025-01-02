@@ -211,7 +211,7 @@ module.exports = {
                 // address: 'Gomati Nagar, Lucknow, Uttar Pradesh, 226011', // Replace with actual member address
                 tasks: memberAssignments.map(task => ({
                     taskId: task._id.toString(),
-                    taskName: task.eventName,
+                    eventName: task.eventName,
                     locationName: task.locationName,
                     status: task.status,
                     location: task.coordinates,

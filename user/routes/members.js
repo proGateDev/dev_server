@@ -29,6 +29,7 @@ router.get("/attendance/records_new", checkUserToken, controller.getChannelMembe
 
 router.get("/daily-assignments/:channelId", checkUserToken, controller.getChannelMembersDailyAssignments);
 router.post("/assignments-records/:channelId", checkUserToken, controller.getChannelMembersAssignmentsByDateRange);
+router.get("/assignments/:assignmentId/:memberId", checkUserToken, controller.getUsersMemberAssignmentById);
 
 
 module.exports = router;
