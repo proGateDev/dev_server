@@ -7,6 +7,7 @@ require("dotenv").config();
 
 
 //==================================================
+// var serviceAccount_ = require("./service-account-key.json");
 const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -187,7 +188,7 @@ module.exports = {
           }
         };
         
-        sendNotification('fbdQsdUER2e7ToVQEurUhk:APA91bE5IOlTpz7gMkEYRrwdpMqgLu6KgSWc2CktoWmRs1NJhftsRlDhferm8ljGdiX09SwiDWko5A6c7Q1pjEPukiauJVINph1kxuyh4hCw1eBBu9ShSmc')
+        sendNotification('cY0Ma7ZpSqSDdRvyc7QVZX:APA91bFpsMKZjMlPcwum8ROxk1bBqi3kz8RP8RYz9horEum37XWrDvWq7H3ZF1rX-3hF9pF-KGoGCZg9AjkjnREmsQhAqehViWvpECPflUx-tBlYA-Pcuqw')
         return res.status(200).send('Member verified and notification sent');
       } else {
         return res.status(400).send('Member already approved');
