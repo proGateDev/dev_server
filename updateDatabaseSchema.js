@@ -8,8 +8,8 @@ mongoose.connect(process.env.DB, { useNewUrlParser: true, useUnifiedTopology: tr
 async function addFieldToUsers() {
   try {
     // Update all users to have isSubscribed field set to false if not already present
-    await userModel.updateMany({ location: { $exists: false } });
-    console.log('Field isSubscribed added to all existing users.');
+    await userModel.updateMany({ geoFenced: { $exists: false } });
+    console.log('Field geoFenced added to all existing users.');
   } catch (error) {
     console.error('Error updating users:', error);
   } finally {
@@ -32,6 +32,6 @@ async function addFieldToMembers() {
 
 
 
-addFieldToMembers();
-// addFieldToUsers()
+// addFieldToMembers();
+addFieldToUsers()
 // addFieldToUsers()

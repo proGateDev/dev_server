@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema({
   parentUser: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }, // User who added this member
 
   email: { type: String },
+  fcmToken: { type: String, default: 'null' },
+
   mobile: String,
   password: String,
   userType: { type: String, default: 'member' },

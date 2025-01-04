@@ -77,10 +77,12 @@ module.exports = {
 
       // Create default channels
       const defaultChannels = [
-        { name: 'IT', description: 'Default IT channel' },
-        { name: 'HR', description: 'Default HR channel' },
-        { name: 'SALES', description: 'Default Sales channel' },
+        { name: 'Friends', description: 'Laughter, memories, connection' },
+        { name: 'Family', description: 'Love, support, togetherness' },
+        { name: 'Work', description: 'Collaboration, productivity, success' },
       ];
+      
+      console.log('saved users id -------------------', newUser._id);
 
       const channelPromises = defaultChannels.map(channel => {
         return new channelModel({

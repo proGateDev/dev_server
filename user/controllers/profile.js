@@ -34,13 +34,15 @@ module.exports = {
   updateUserProfile: async (req, res) => {
     try {
       const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
-      const { name, email, mobile } = req.body; // Extract the fields to be updated from the request body
+      const { name, email, mobile, geoFenced } = req.body; // Extract the fields to be updated from the request body
+      // console.log('geoFenced____', geoFenced);
 
       // Prepare the update object
       const updateData = {};
       if (name) updateData.name = name;
       if (email) updateData.email = email;
       if (mobile) updateData.mobile = mobile;
+      if (geoFenced) updateData.geoFenced = geoFenced; // Update geofenced coordinates
 
       // Update the user information
       const updatedUser = await userModel.findByIdAndUpdate(
@@ -63,20 +65,21 @@ module.exports = {
 
 
 
-  
+
+
   getUserOverview: async (req, res) => {
     try {
       const userId = req.userId;
       console.log(userId);
-      
-  
+
+
       // Find the user data
       const userData = await userModel.findOne({ _id: userId });
-  
+
       if (!userData) {
         return res.status(404).json({ message: "User not found" });
       }
-  
+
       // Query the member model to get counts of active and inactive members
       const members = await memberModel.find({ parentUser: userId });
       const totalMembers = members.length;
@@ -93,14 +96,14 @@ module.exports = {
           pendingMembers
         },
       };
-  
+
       res.status(200).json(jsonResponse);
     } catch (error) {
       console.error("Error fetching user data:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   },
-  
+
 
 
 
