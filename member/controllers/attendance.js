@@ -1,7 +1,7 @@
 
 // Punch-in for a member
 const Attendance = require('../models/attendance'); // Import the attendance model
-const memberModel= require('../../member/models/profile'); // Import the attendance model
+const memberModel = require('../../member/models/profile'); // Import the attendance model
 
 exports.markAttendance = async (req, res) => {
     try {
@@ -22,7 +22,10 @@ exports.markAttendance = async (req, res) => {
 
         if (existingAttendance) {
             // If attendance for today already exists, return an error
-            return res.status(300).json({ message: 'Attendance already marked for today.' });
+            return res.status(200).json({
+                message: 'Attendance already marked for today.',
+                alreadyMarked: true
+            });
         }
 
         // If no attendance for today, create a new punch-in record
@@ -34,9 +37,14 @@ exports.markAttendance = async (req, res) => {
         });
 
         await newPunchIn.save();
-        console.log('========= Attednace Marked ==============================');
+        // console.log('========= Attednace Marked ==============================');
 
-        return res.status(201).json({ message: 'Punch-in successful', data: newPunchIn });
+        return res.status(201).json({
+            message: 'Punch-in successful',
+            data: newPunchIn,
+            alreadyMarked: false
+
+        });
     } catch (error) {
         console.error('Error during punch-in:', error); // Log the error for debugging
         return res.status(500).json({ message: 'Error during punch-in', error: error.message });

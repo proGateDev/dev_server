@@ -31,12 +31,26 @@ const userSchema = new mongoose.Schema({
 
 
 
+  // geoFenced: {
+  //   type: [[Number]], // Array of coordinates for the geofence, e.g., [[longitude, latitude], [longitude, latitude]]
+  //   default: [], // Empty array initially
+  // },
+
+
+
   geoFenced: {
-    type: [[Number]], // Array of coordinates for the geofence, e.g., [[longitude, latitude], [longitude, latitude]]
-    default: [], // Empty array initially
+    type: {
+      type: String, 
+      enum: ['Polygon'], // GeoJSON type for polygon
+      required: true,
+      default: 'Polygon'
+    },
+    coordinates: {
+      type: [[Number]], // [[longitude, latitude], [longitude, latitude]]
+      required: true,
+      default: []
+    }
   },
-
-
 
 
 

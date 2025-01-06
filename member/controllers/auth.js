@@ -3,6 +3,7 @@ const { checkEncryptedPassword } = require('../../util/auth')
 const jwt = require('jsonwebtoken');
 const { onMemberVerified } = require("../../service/socket");
 const admin = require("firebase-admin");
+const userModel = require("../../user/models/profile");
 require("dotenv").config();
 
 
@@ -150,11 +151,13 @@ module.exports = {
       // Verify the token first
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const memberId = decoded.userId;
+      const parentUserId = decoded.parentUserId;
       // console.log(memberId);
+      const parentUser = await userModel.findById({_id : parentUserId});
+      console.log('------ parentUser  ------------>', parentUser?.fcmToken);
 
 
       // const memberId = req.body.memberId;
-      console.log('------ memberId  ------------>', memberId);
       // const userId = req.body.userId; // The user who added the member
       const member = await memberModel.findById(memberId);
 
@@ -188,7 +191,7 @@ module.exports = {
           }
         };
         
-        sendNotification('cY0Ma7ZpSqSDdRvyc7QVZX:APA91bFpsMKZjMlPcwum8ROxk1bBqi3kz8RP8RYz9horEum37XWrDvWq7H3ZF1rX-3hF9pF-KGoGCZg9AjkjnREmsQhAqehViWvpECPflUx-tBlYA-Pcuqw')
+        sendNotification(parentUser?.fcmToken)
         return res.status(200).send('Member verified and notification sent');
       } else {
         return res.status(400).send('Member already approved');

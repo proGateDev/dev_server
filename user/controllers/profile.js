@@ -34,33 +34,48 @@ module.exports = {
   updateUserProfile: async (req, res) => {
     try {
       const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
-      const { name, email, mobile, geoFenced } = req.body; // Extract the fields to be updated from the request body
-      // console.log('geoFenced____', geoFenced);
-
+      const { name, email, mobile, geoFenced, fcmToken } = req.body; // Extract the fields to be updated from the request body
+  
       // Prepare the update object
       const updateData = {};
+  
+      // Update the user's profile fields
       if (name) updateData.name = name;
       if (email) updateData.email = email;
       if (mobile) updateData.mobile = mobile;
-      if (geoFenced) updateData.geoFenced = geoFenced; // Update geofenced coordinates
-
+      if (fcmToken) updateData.fcmToken = fcmToken; // Update fcmToken
+  
+      // Handle geoFenced field update: Ensure the format is correct for GeoJSON Polygon
+      if (geoFenced) {
+        // Validate geoFenced format (array of arrays of numbers, e.g., [[longitude, latitude], [longitude, latitude], ...])
+        if (Array.isArray(geoFenced) && geoFenced.every(coord => Array.isArray(coord) && coord.length === 2)) {
+          updateData.geoFenced = {
+            type: 'Polygon',
+            coordinates: geoFenced
+          };
+        } else {
+          return res.status(400).json({ message: 'Invalid geoFenced coordinates format' });
+        }
+      }
+  
       // Update the user information
       const updatedUser = await userModel.findByIdAndUpdate(
         userId,
         updateData,
         { new: true, runValidators: true } // Return the updated user and run validators
       );
-
+  
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
-
+  
       res.status(200).json({ message: "User updated successfully", user: updatedUser });
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Error updating user", error: error.message });
     }
   },
+  
 
 
 

@@ -7,6 +7,7 @@ router.post('/location',checkUserToken, trackController.assignment);
 // router.get('/location', checkUserToken,trackController.getAssignment);
 
 
+router.post('/location/geo-fencing',checkUserToken, trackController.assignmentGeoFencing);
 
 
 

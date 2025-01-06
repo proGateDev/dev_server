@@ -193,7 +193,11 @@ module.exports = {
           if (newMember && notifyTo) {
 
             const verificationToken = jwt.sign(
-              { email: memberData.email, userId: newMember._id }, // Payload
+              {
+                email: memberData?.email,
+                userId: newMember?._id,
+                parentUserId:userId
+              },
               process.env.JWT_SECRET, // Secret key from your environment variables
               { expiresIn: '360m' } // Token expiration time
             );
@@ -1132,7 +1136,7 @@ module.exports = {
       const { assignmentId, memberId } = req.params; // Get startDate and endDate from request params
 
       // const memberId = req?.userId;
-      console.log(' assignmentId,memberId ---', req.params,assignmentId, memberId);
+      console.log(' assignmentId,memberId ---', req.params, assignmentId, memberId);
 
 
 

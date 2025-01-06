@@ -12,7 +12,7 @@ module.exports = {
     try {
       console.log("--------  started User signup ----------");
 
-      const { name, email, password, mobile } = req.body;
+      const { name, email, password, mobile,fcmToken } = req.body;
 
       // Validate input
       if (!name) {
@@ -59,6 +59,8 @@ module.exports = {
       const newUser = new model({
         name,
         email,
+        fcmToken,
+
         mobile,
         password: hashedPassword,
         createdBy: "system", // or replace with appropriate user ID if needed

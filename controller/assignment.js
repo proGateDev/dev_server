@@ -1,12 +1,30 @@
 const assignmentModel = require('../model/assignment');
 const { getAddressFromCoordinates_v1 } = require('../service/geoCode');
 const axios = require('axios');
+const userModel = require('../user/models/profile');
+const memberModel = require('../member/models/profile');
+
+const admin = require("firebase-admin");
 
 
 
 
-
-
+const sendNotification = async (obj) => {
+    try {
+        console.log('obj',obj);
+        
+        await admin.messaging().send({
+            token: obj?.fcmToken,
+            notification: {
+                title: "Verification Complete",
+                body: `${obj?.memberName} has successfully verified their account!`,
+            },
+        });
+        console.log("Notification sent successfully!");
+    } catch (error) {
+        console.error("Error sending notification:", error);
+    }
+};
 
 
 
@@ -45,14 +63,34 @@ const getAddress = async (latitude, longitude) => {
 
 
 
+function getAverageCoordinates(coordinates) {
+    // Ensure the coordinates array is not empty
+    if (coordinates.length === 0) return null;
+
+    let totalLat = 0;
+    let totalLon = 0;
+
+    // Sum up all the latitudes and longitudes
+    coordinates.forEach(coord => {
+        totalLat += coord[0]; // lat
+        totalLon += coord[1]; // lon
+    });
+
+    // Calculate the average latitude and longitude
+    const avgLat = totalLat / coordinates.length;
+    const avgLon = totalLon / coordinates.length;
+
+    return [avgLat, avgLon]; // Return the average coordinates
+}
+
 
 //==========================================
 module.exports = {
     assignment: async (req, res) => {
         try {
             const userId = req.userId
-            // console.log(' ---- userId   -----------', userId);
-            const { memberId, locationName, coordinates, dateTime, eventName } = req.body;
+            console.log(' ---- userId   -----------', userId, req.body);
+            const { memberId, coordinates, dateTime, eventName, type } = req.body;
             // console.log(' assigning this .......', coordinates?.lat);
             let locationNameDecodedResponse = await getAddress(coordinates?.lat, coordinates?.lng)
             let locationNameDecoded = locationNameDecodedResponse?.features[0]?.properties?.place_formatted
@@ -61,13 +99,18 @@ module.exports = {
             if (
                 !memberId ||
                 !userId ||
-                !locationName ||
+                // !locationName ||
                 !coordinates) {
                 return res.status(400).json({
                     status: 400,
                     message: 'All fields are required'
                 });
             }
+
+            const member = await memberModel.findById({ _id: memberId });
+
+            console.log('member___', member);
+
 
             // Create a new assignment
             const newAssignment = new assignmentModel({
@@ -77,7 +120,8 @@ module.exports = {
                 coordinates,
                 assignedAt: dateTime?.date,
                 time: dateTime?.time,
-                eventName
+                eventName,
+                type
             });
 
             // Save the assignment to the database
@@ -89,11 +133,92 @@ module.exports = {
                 message: 'Location assigned successfully',
                 assignment: savedAssignment,
             });
+
+            sendNotification({
+                fcmToken: member?.fcmToken,
+                memberName: member?.name,
+            })
+
+
+
         } catch (error) {
             console.error("Error assigning location:", error);
             res.status(500).json({ error: 'Failed to assign location' });
         }
     },
+
+    assignmentGeoFencing: async (req, res) => {
+        try {
+            const userId = req.userId;
+            const { dateTime, eventName, type } = req.body;
+
+            // Get the parent user details and their members
+            const parentUserDetails = await userModel.findById({ _id: userId });
+            const parentUserMembers = await memberModel.find({ parentUser: parentUserDetails?._id });
+
+            // Calculate the average coordinates of the parent user’s geo-fenced area
+            const avgCoordinates = getAverageCoordinates(parentUserDetails?.geoFenced?.coordinates);
+            console.log(' ---- parentUserMembers length -----------', parentUserMembers.length);
+
+            // Get the location name from the average coordinates
+            let locationNameDecodedResponse = await getAddress(avgCoordinates[0], avgCoordinates[1]);
+            let locationNameDecoded = locationNameDecodedResponse?.features[0]?.properties?.place_formatted;
+
+            // Check if the members exist
+            if (parentUserMembers.length === 0) {
+                return res.status(404).json({ error: 'No members found for this user' });
+            }
+
+            // Iterate over all members and create a new assignment for each one
+            const assignments = [];
+            for (const member of parentUserMembers) {
+                // Check if an assignment with type 'daily' already exists for this member
+                const existingDailyAssignment = await assignmentModel.findOne({
+                    memberId: member._id,
+                    type: 'daily'
+                });
+
+                // If an assignment with type 'daily' exists, skip creating a new one for this member
+                if (existingDailyAssignment) {
+                    console.log(`Daily assignment already exists for member ${member._id}. Skipping.`);
+                    continue; // Skip to the next member
+                }
+
+                // Create a new assignment
+                const newAssignment = new assignmentModel({
+                    memberId: member._id,  // Set member ID for each assignment
+                    userId,
+                    locationName: locationNameDecoded,
+                    coordinates: { lat: avgCoordinates[0], lng: avgCoordinates[1] },
+                    assignedAt: dateTime?.date,
+                    time: dateTime?.time,
+                    eventName,
+                    type: type || 'default',  // Set a default type if not provided
+                });
+
+                // Add the new assignment to the assignments array
+                assignments.push(newAssignment);
+            }
+
+            // Save all the assignments to the database
+            if (assignments.length > 0) {
+                const savedAssignments = await assignmentModel.insertMany(assignments);
+                console.log('============ Assignments created ========================');
+                console.log(savedAssignments);
+
+                res.status(201).json({
+                    message: 'Locations assigned successfully',
+                    assignments: savedAssignments,
+                });
+            } else {
+                res.status(400).json({ message: 'No assignments created due to existing daily assignment' });
+            }
+        } catch (error) {
+            console.error("Error assigning locations:", error);
+            res.status(500).json({ error: 'Failed to assign location' });
+        }
+    },
+
     getAssignment: async (req, res) => {
         try {
 
