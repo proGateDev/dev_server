@@ -81,7 +81,7 @@ module.exports = {
     try {
       console.log("--------  started User signup ----------");
 
-      const { name, email, password, mobile ,fcmToken} = req.body;
+      const { name, email, password, mobile, fcmToken } = req.body;
 
       // Validate input
       if (!name) {
@@ -348,6 +348,126 @@ module.exports = {
       });
     }
   },
+  handleFcmToken: async (req, res) => {
+    try {
+      console.log("-------- Started handleFcmToken ----------");
+  
+      const { email, password } = req.body;
+  
+      if (!email || !password) {
+        return sendErrorResponse(res, 400, "Email and password are required.");
+      }
+  
+      // Check if the user is a member
+      const member = await memberModel.findOne({ email });
+      if (member && (await checkEncryptedPassword(password, member.password))) {
+        req.userId = member._id;
+        return res.status(200).json({
+          status: 200,
+          message: "Login successful.",
+          userId: member._id,
+          fcmToken: member.fcmToken,
+          type: "member",
+        });
+      }
+  
+      // Check if the user is a user
+      const user = await userModel.findOne({ email });
+      if (user && ( await checkEncryptedPassword(password, user.password)    )) {
+        req.userId = user._id;
+        return res.status(200).json({
+          status: 200,
+          message: "Login successful.",
+          userId: user._id,
+          fcmToken: user.fcmToken,
+
+          type: "user",
+        });
+      }
+  
+      // If no user or member is found
+      return sendErrorResponse(res, 401, "Invalid email or password.");
+    } catch (error) {
+      console.error("Error during login:", error.message);
+      return res.status(500).json({
+        status: 500,
+        message: "An unexpected error occurred. Please try again later.",
+      });
+    }
+  }  ,
+  handleFcmTokenUpdate: async (req, res) => {
+    try {
+      console.log("-------- Started handleFcmToken ----------");
+  
+      const { email, password, fcmToken } = req.body;
+  
+      if (!email || !password) {
+        return res.status(400).json({
+          status: 400,
+          message: "Email and password are required.",
+        });
+      }
+  
+      if (!fcmToken) {
+        return res.status(400).json({
+          status: 400,
+          message: "FCM token is required.",
+        });
+      }
+  
+      // Check if the user is a member
+      const member = await memberModel.findOne({ email });
+      if (member && (await checkEncryptedPassword(password, member.password))) {
+        // Update the FCM token if it's different
+        if (member.fcmToken !== fcmToken) {
+          member.fcmToken = fcmToken;
+          await member.save();
+          console.log("Member FCM token updated");
+        }
+  
+        return res.status(200).json({
+          status: 200,
+          message: "Login successful.",
+          userId: member._id,
+          fcmToken: member.fcmToken,
+          type: "member",
+        });
+      }
+  
+      // Check if the user is a user
+      const user = await userModel.findOne({ email });
+      if (user && (await checkEncryptedPassword(password, user.password))) {
+        // Update the FCM token if it's different
+        if (user.fcmToken !== fcmToken) {
+          user.fcmToken = fcmToken;
+          await user.save();
+          console.log("User FCM token updated");
+        }
+  
+        return res.status(200).json({
+          status: 200,
+          message: "Login successful.",
+          userId: user._id,
+          fcmToken: user.fcmToken,
+          type: "user",
+        });
+      }
+  
+      // If no user or member is found
+      return res.status(401).json({
+        status: 401,
+        message: "Invalid email or password.",
+      });
+    } catch (error) {
+      console.error("Error during login:", error.message);
+      return res.status(500).json({
+        status: 500,
+        message: "An unexpected error occurred. Please try again later.",
+      });
+    }
+  }
+  
+  
 }
 
 
