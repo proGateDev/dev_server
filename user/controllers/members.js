@@ -215,6 +215,7 @@ module.exports = {
                 userId: newMember?._id,
                 parentUserId: userId,
                 parentUserName: parentUser?.name,
+                memberName:newMember?.name
               },
               process.env.JWT_SECRET, // Secret key from your environment variables
               { expiresIn: '360m' } // Token expiration time
