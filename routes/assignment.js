@@ -22,4 +22,9 @@ router.get('/member/:assignmentId', checkUserToken,trackController.getMemberAssi
 router.patch('/location', checkUserToken,trackController.patchAssignment);
 router.patch('/member', checkUserToken,trackController.patchAssignment);
 
+
+
+
+router.post('/member/daily', checkUserToken,trackController.getMemberDailyAssignments);
+
 module.exports = router;

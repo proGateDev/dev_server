@@ -33,12 +33,12 @@ module.exports = {
     const { latitude, longitude } = req?.params
     const memberDetails = await memberModel.findById({ _id: userId });
     const memberParentUserDetails = await userModel.findById({ _id: memberDetails?.parentUser });
-    // console.log('memberParentUserDetails', memberParentUserDetails.geoFenced?.coordinates);
     let memberCoordinates = [latitude, longitude]
-
+    
     // Extract the user's current location and geofenced coordinates
     const userLocation = memberCoordinates;  // [longitude, latitude]
     const geofenceCoordinates = memberParentUserDetails.geoFenced?.coordinates; // An array of arrays representing the polygon
+    console.log('geofenceCoordinates',geofenceCoordinates);
 
     if (!userLocation || geofenceCoordinates.length === 0) {
       return false; // No location or geofence defined

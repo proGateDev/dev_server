@@ -18,6 +18,7 @@ const attendanceModel = require("../../member/models/attendance");
 const moment = require('moment'); // For handling date calculations
 const assignmentModel = require("../../model/assignment");
 const channelMemberModel = require("../../model/channelsMembers");
+const admin = require('firebase-admin');
 
 //==================================================
 module.exports = {
@@ -178,7 +179,7 @@ module.exports = {
             parentUser: userId,
             password: passwordEncrypted
           });
-          console.log('newMember', newMember);
+          // console.log('newMember', newMember);
 
           const notifyTo = await notificationModel.create({
             userId,
@@ -188,15 +189,32 @@ module.exports = {
 
           });
 
-          createdMembers.push(newMember);
 
-          if (newMember && notifyTo) {
+          const addingToMemberToChannel = await channelMemberModel.create({
+            channelId: newMember?.channelId,
+            memberId: newMember?._id,
+            addedBy: newMember?.parentUser,
+            addedByModel: 'user',
+            message: `You have added a new member: ${memberData?.name}`,
+
+
+
+          });
+
+
+
+          createdMembers.push(newMember);
+          const parentUser = await userModel.findOne({ _id: userId });
+          // console.log('parentUser',userId, parentUser?.name);
+
+          if (newMember && notifyTo && addingToMemberToChannel) {
 
             const verificationToken = jwt.sign(
               {
                 email: memberData?.email,
                 userId: newMember?._id,
-                parentUserId:userId
+                parentUserId: userId,
+                parentUserName: parentUser?.name,
               },
               process.env.JWT_SECRET, // Secret key from your environment variables
               { expiresIn: '360m' } // Token expiration time
@@ -244,7 +262,7 @@ module.exports = {
             };
 
             await sendMail(messageData);
-            // await sendMail();
+
 
             // sendNotification(userId, `You have added a new member: ${memberData?.name}`);
             // sendServerDetailToClient(` --------- server se aaya mera DOST ---------------- : ${memberData?.name}`);
@@ -263,7 +281,15 @@ module.exports = {
 
           // console.log(` ---------- Email sent ----------------- `,memberData.email);
         } catch (emailError) {
+
           console.error(`Failed to send email to ${memberData.email}:`, emailError);
+          if (emailError.code === 11000 && emailError.keyPattern?.email) {
+            console.error(`Duplicate email error for ${memberData.email}`);
+            return res.status(409).json({
+              status: 409,
+              message: `The email address "${memberData.email}" is already in use.`,
+            });
+          }
         }
       }
 
@@ -1166,19 +1192,86 @@ module.exports = {
       console.error('Error fetching user assignments:', error);
       res.status(500).json({ error: 'Internal Server Error' });
     }
+  },
+
+
+
+
+
+
+
+
+
+  sendSosToMembers: async (req, res) => {
+    try {
+      console.log('req.body', req.body);
+
+      const { memberIds, message } = req.body;
+      const userId = req.userId;
+      const parentUserDetails = await userModel.findOne({ _id: userId});
+
+
+      // Validate request
+      if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+        return res.status(400).json({ error: 'Invalid or missing memberIds' });
+      }
+
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Invalid or missing message' });
+      }
+
+      // Prepare the FCM message payload
+      const payload = {
+        notification: {
+          title: 'SOS Alert',
+          body: `${parentUserDetails?.name} Is Seding SOS To You`,
+        },
+        data: {
+          type: 'SOS',
+        },
+      };
+
+      // Loop over each memberId and send SOS individually
+      let successCount = 0;
+      let failureCount = 0;
+      const responses = [];
+
+      for (const memberId of memberIds) {
+        // Fetch FCM token for each member
+        const member = await memberModel.findOne({ _id: memberId }, { fcmToken: 1 });
+
+        if (member && member.fcmToken) {
+          try {
+            // Send notification to the member
+            const response = await admin.messaging().send({
+              token: member.fcmToken,
+              ...payload,
+            });
+
+            // Increment success count
+            successCount++;
+            responses.push({ memberId, success: true, response });
+          } catch (error) {
+            // Increment failure count
+            failureCount++;
+            responses.push({ memberId, success: false, error: error.message });
+          }
+        } else {
+          failureCount++;
+          responses.push({ memberId, success: false, error: 'No valid FCM token' });
+        }
+      }
+
+      return res.status(200).json({
+        message: `SOS sent to ${successCount} members. ${failureCount} failed.`,
+        details: responses,
+      });
+    } catch (error) {
+      console.error('Error sending SOS:', error);
+      return res.status(500).json({ error: 'Failed to send SOS notification', details: error.message });
+    }
   }
 
 
 
-
-
-
-
-
-
 }
-
-
-
-
-

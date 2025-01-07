@@ -9,15 +9,14 @@ const admin = require("firebase-admin");
 
 
 
-const sendNotification = async (obj) => {
+const sendFirebaseNotification = async (obj) => {
     try {
-        console.log('obj',obj);
-        
+
         await admin.messaging().send({
             token: obj?.fcmToken,
             notification: {
-                title: "Verification Complete",
-                body: `${obj?.memberName} has successfully verified their account!`,
+                title: obj?.title,
+                body: obj?.body,
             },
         });
         console.log("Notification sent successfully!");
@@ -108,8 +107,9 @@ module.exports = {
             }
 
             const member = await memberModel.findById({ _id: memberId });
+            const parentUser = await userModel.findById({ _id: userId });
 
-            console.log('member___', member);
+            // console.log('member___', member);
 
 
             // Create a new assignment
@@ -134,9 +134,13 @@ module.exports = {
                 assignment: savedAssignment,
             });
 
-            sendNotification({
+            sendFirebaseNotification({
                 fcmToken: member?.fcmToken,
                 memberName: member?.name,
+
+                title: `${parentUser?.name} Has a Task for You!`,
+
+                body: `Ready for action ? Head TO :  ${locationNameDecoded},  for your task.`,
             })
 
 
@@ -180,7 +184,7 @@ module.exports = {
 
                 // If an assignment with type 'daily' exists, skip creating a new one for this member
                 if (existingDailyAssignment) {
-                    console.log(`Daily assignment already exists for member ${member._id}. Skipping.`);
+                    console.log(`Daily assignment already exists for member ${member._id}.Skipping.`);
                     continue; // Skip to the next member
                 }
 
@@ -266,7 +270,7 @@ module.exports = {
             if (!validStatuses.includes(status)) {
                 return res.status(400).json({
                     status: 400,
-                    message: `Invalid status. Allowed statuses are: ${validStatuses.join(', ')}`,
+                    message: `Invalid status.Allowed statuses are: ${validStatuses.join(', ')} `,
                 });
             }
 
@@ -390,8 +394,75 @@ module.exports = {
             console.error('Error fetching user assignments:', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
-    }
+    },
 
+
+
+
+
+
+    getMemberDailyAssignments: async (req, res) => {
+        try {
+            console.log('getMemberDailyAssignments chala ---');
+
+            const userId = req?.userId;
+
+            // Ensure startDate and endDate are in a valid format
+            // const start = new Date(startDate);
+            // const end = new Date(endDate);
+
+            // if (isNaN(start) || isNaN(end)) {
+            //     return res.status(400).json({ message: 'Invalid date format' });
+            // }
+
+
+
+
+
+
+
+
+            // Fetch the assignments within the date range and type 'Daily'
+            const memberAssignments = await assignmentModel.find({
+                memberId: userId,
+                // assignedAt: { $gte: start, $lte: end }, // Filter by assignmentDate within the date range
+                type: 'daily', // Only fetch assignments with type 'Daily'
+            });
+            // console.log('memberAssignments', memberAssignments);
+
+            if (!memberAssignments || memberAssignments.length === 0) {
+                return res.status(404).json({ message: 'No daily assignments found for the given period' });
+            }
+
+            // Prepare the member's general information
+            const memberInfo = {
+                id: userId,
+                totalTasks: memberAssignments.length,
+                pendingTasks: memberAssignments.filter(task => task.status === 'pending').length,
+                completedTasks: memberAssignments.filter(task => task.status === 'completed').length,
+                imageUrl: 'https://via.placeholder.com/150', // Replace with actual member image URL
+                tasks: memberAssignments.map(task => ({
+                    taskId: task._id.toString(),
+                    eventName: task.eventName,
+                    locationName: task.locationName,
+                    status: task.status,
+                    location: task.coordinates,
+                    date: task.assignedAt.toISOString(),
+                    time: task.time,
+                    type: task.type,
+                })),
+            };
+
+            res.status(200).json({
+                message: 'Daily assignments found successfully',
+                member: memberInfo,
+            });
+
+        } catch (error) {
+            console.error('Error fetching user assignments:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    }
 
 
 

@@ -32,4 +32,7 @@ router.post("/assignments-records/:channelId", checkUserToken, controller.getCha
 router.get("/assignments/:assignmentId/:memberId", checkUserToken, controller.getUsersMemberAssignmentById);
 
 
+router.post("/sos", checkUserToken, controller.sendSosToMembers);
+
+
 module.exports = router;
