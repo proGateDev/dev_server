@@ -1207,7 +1207,7 @@ module.exports = {
     try {
       console.log('req.body', req.body);
 
-      const { memberIds, message } = req.body;
+      const { memberIds } = req.body;
       const userId = req.userId;
       const parentUserDetails = await userModel.findOne({ _id: userId});
 
@@ -1217,11 +1217,17 @@ module.exports = {
         return res.status(400).json({ error: 'Invalid or missing memberIds' });
       }
 
-      if (!message || typeof message !== 'string') {
-        return res.status(400).json({ error: 'Invalid or missing message' });
-      }
-
+    
       // Prepare the FCM message payload
+      // {
+      //   "to": "<FCM_TOKEN>",
+      //   "data": {
+      //     "action": "startTracking"
+      //   },
+      //   "priority": "high", // Necessary for immediate background processing
+      //   "content_available": true
+      // }
+      
       const payload = {
         notification: {
           title: 'SOS Alert',
@@ -1271,8 +1277,84 @@ module.exports = {
       console.error('Error sending SOS:', error);
       return res.status(500).json({ error: 'Failed to send SOS notification', details: error.message });
     }
-  }
+  },
 
+
+  requestLiveLocationForSelectedMembers: async (req, res) => {
+    try {
+      console.log('req.body', req.body);
+
+      const { memberIds } = req.body;
+      const userId = req.userId;
+      const parentUserDetails = await userModel.findOne({ _id: userId});
+
+
+      // Validate request
+      if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+        return res.status(400).json({ error: 'Invalid or missing memberIds' });
+      }
+
+    
+      // Prepare the FCM message payload
+      // {
+      //   "to": "<FCM_TOKEN>",
+      //   "data": {
+      //     "action": "startTracking"
+      //   },
+      //   "priority": "high", // Necessary for immediate background processing
+      //   "content_available": true
+      // }
+      
+      const payload = {
+        notification: {
+          title: 'Live Location',
+          body: `${parentUserDetails?.name} Is Requesting Your Live Location .`,
+        },
+        data: {
+          type: 'LiveLocationSharing',
+        },
+      };
+
+      // Loop over each memberId and send SOS individually
+      let successCount = 0;
+      let failureCount = 0;
+      const responses = [];
+
+      for (const memberId of memberIds) {
+        // Fetch FCM token for each member
+        const member = await memberModel.findOne({ _id: memberId }, { fcmToken: 1 });
+
+        if (member && member.fcmToken) {
+          try {
+            // Send notification to the member
+            const response = await admin.messaging().send({
+              token: member.fcmToken,
+              ...payload,
+            });
+
+            // Increment success count
+            successCount++;
+            responses.push({ memberId, success: true, response });
+          } catch (error) {
+            // Increment failure count
+            failureCount++;
+            responses.push({ memberId, success: false, error: error.message });
+          }
+        } else {
+          failureCount++;
+          responses.push({ memberId, success: false, error: 'No valid FCM token' });
+        }
+      }
+
+      return res.status(200).json({
+        message: `Requested Live Location to ${successCount} members. ${failureCount} failed.`,
+        details: responses,
+      });
+    } catch (error) {
+      console.error('Error sending requesting location:', error);
+      return res.status(500).json({ error: 'Failed to request location notification', details: error.message });
+    }
+  }
 
 
 }

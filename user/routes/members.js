@@ -33,6 +33,7 @@ router.get("/assignments/:assignmentId/:memberId", checkUserToken, controller.ge
 
 
 router.post("/sos", checkUserToken, controller.sendSosToMembers);
+router.post("/request-live-location", checkUserToken, controller.requestLiveLocationForSelectedMembers);
 
 
 module.exports = router;

@@ -24,7 +24,8 @@ exports.markAttendance = async (req, res) => {
             // If attendance for today already exists, return an error
             return res.status(200).json({
                 message: 'Attendance already marked for today.',
-                alreadyMarked: true
+                existingAttendance,
+                alreadyMarked: true,
             });
         }
 

@@ -254,8 +254,12 @@ module.exports = {
     patchAssignment: async (req, res) => {
         try {
             console.log('Updating task status ------------------...', req.body);
+            const userId = req.userId
+            // console.log('userId ??? ------------------...', userId)
 
             const { taskId, status } = req.body;
+            const assignmentDetails = await assignmentModel.findById({ _id: taskId });
+            // console.log('assignmentDetails', assignmentDetails);
 
             // Check if the taskId and status are provided
             if (!taskId || !status) {
@@ -270,25 +274,62 @@ module.exports = {
             if (!validStatuses.includes(status)) {
                 return res.status(400).json({
                     status: 400,
-                    message: `Invalid status.Allowed statuses are: ${validStatuses.join(', ')} `,
+                    message: `Invalid status. Allowed statuses are: ${validStatuses.join(', ')}`,
                 });
             }
 
-            // Find the task and update its status
-            const updatedTask = await assignmentModel.findByIdAndUpdate(
-                taskId,
-                { status },
-                { new: true } // Return the updated document
-            );
-
-            if (!updatedTask) {
+            // Find the task to check its current status
+            const existingTask = await assignmentModel.findById(taskId);
+            if (!existingTask) {
                 return res.status(404).json({
                     status: 404,
                     message: 'Task not found',
                 });
             }
 
-            console.log('Task status updated:', updatedTask);
+            // Check if the current status is already 'completed'
+            if (existingTask.status === 'completed') {
+                return res.status(400).json({
+                    status: 400,
+                    message: 'Task is already marked as completed',
+                });
+            }
+
+            // Update the task status
+            const updatedTask = await assignmentModel.findByIdAndUpdate(
+                taskId,
+                { status },
+                { new: true } // Return the updated document
+            );
+
+            // console.log('Task status updated:', updatedTask);
+            //===================== NOTIFICATIONS =========================================
+            // console.log('userId -------:', userId);
+            const member = await memberModel.findById({ _id: userId });
+            // console.log('member -------:', member);
+            
+            const parentUser = await userModel.findById({ _id: member?.parentUser });
+            console.log('member?.fcmToken -------:', member?.fcmToken);
+
+
+
+            sendFirebaseNotification({
+                fcmToken: member?.fcmToken,
+                
+                title: `You have Completed : ${assignmentDetails.eventName}`,
+                body : `You have arrived @ ${assignmentDetails.locationName}`
+            })
+
+
+
+            sendFirebaseNotification({
+                fcmToken: parentUser?.fcmToken,
+                title: `${ member?.name} has completed ${assignmentDetails.eventName}`,
+                body : `${ member?.name} is  @ ${assignmentDetails.locationName}`
+            })
+
+
+
 
             res.status(200).json({
                 message: 'Task status updated successfully',
@@ -322,6 +363,8 @@ module.exports = {
             const memberAssignments = await assignmentModel.find({
                 memberId: memberId,
                 assignedAt: { $gte: start, $lte: end }, // Filter by assignmentDate within the date range
+                type: { $ne: 'daily' }, // Exclude tasks where type is 'daily'
+
             })
             // console.log('memberAssignments', memberId);
 
@@ -346,6 +389,7 @@ module.exports = {
                     location: task.coordinates,
                     date: task.assignedAt.toISOString(),
                     time: task.time,
+                    type: task.type,
                 })),
             };
             // console.log('mil to ghaya ------------------');
@@ -431,7 +475,11 @@ module.exports = {
             // console.log('memberAssignments', memberAssignments);
 
             if (!memberAssignments || memberAssignments.length === 0) {
-                return res.status(404).json({ message: 'No daily assignments found for the given period' });
+                return res.status(200).json({
+                    message: 'No daily assignments found for the given period',
+                    status: 200,
+                    data: []
+                });
             }
 
             // Prepare the member's general information
@@ -455,7 +503,7 @@ module.exports = {
 
             res.status(200).json({
                 message: 'Daily assignments found successfully',
-                member: memberInfo,
+                data: [memberInfo],
             });
 
         } catch (error) {
