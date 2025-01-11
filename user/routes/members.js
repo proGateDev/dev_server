@@ -36,4 +36,14 @@ router.post("/sos", checkUserToken, controller.sendSosToMembers);
 router.post("/request-live-location", checkUserToken, controller.requestLiveLocationForSelectedMembers);
 
 
+router.get('/:memberId/live-tracking', controller.getUserMemberLiveTracking);
+
+
+
+router.get("/live-location-tracking/:memberId/:selectedDate",checkUserToken, controller.fetchUserLiveLocation);   // Update
+router.get("/assignment-location-tracking/:memberId/:selectedDate",checkUserToken, controller.fetchUserAssignmentLocation);   // Update
+
+
+
+
 module.exports = router;

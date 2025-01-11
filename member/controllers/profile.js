@@ -1,5 +1,7 @@
+const assignmentModel = require("../../model/assignment");
 const trackingHistoryModel = require("../../model/trackingHistory");
 const getAddressFromCoordinates = require("../../service/geoCode");
+const userModel = require("../../user/models/profile");
 const memberModel = require("../models/profile");
 const superAdminCreationValidation = require("../validation/superAdminCreation")
 const bcrypt = require('bcryptjs');
@@ -69,100 +71,145 @@ module.exports = {
 
 
 
-
-  userLiveLocationUpdate: async (req, res) => {
+  // Update or create location history for a scheduled assignment
+  userLiveLocationAssignmentUpdate: async (req, res) => {
     try {
-      
-      
       const memberId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
+      // console.log('userLiveLocationAssignmentUpdate ', memberId, req.userId);
+
       const {
         latitude,
         longitude,
-        locationDetails
-      } = req.body; // Extract the fields to be updated from the request body
-      // console.log('       locationDetails........', locationDetails);
+        addressDetails,
+        assignmentId,
+        notes
+      } = req.body;
+
+      // if (!assignmentId || !memberId || !userId || !location || !location.coordinates) {
+      //   return res.status(400).json({ error: 'Missing required fields' });
+      // }
+
+      // Ensure assignment exists
+      // const assignment = await assignmentModel.findById(assignmentId);
+      // if (!assignment) {
+      //   return res.status(404).json({ error: 'Assignment not found' });
+      // }
+
+      // Ensure member exists
       const member = await memberModel.findById(memberId);
-      
-      console.log('-------------- userLiveLocationUpdate -------',latitude,
-        longitude,);
-
-
-
-      console.log(`  ....... Before adding  memberModel .............`);
-      // Step 1: Find the member
-      const fetchedMember = await memberModel.findById(memberId);
-      console.log('member hai ... ', fetchedMember.name);
-
-      // Step 2: Update the member's location if the member is found
-      if (fetchedMember) {
-        fetchedMember.set({
-          location: {
-            type: 'Point',
-            coordinates: [ latitude,longitude],
-            updatedAt: Date.now(),
-          },
-        });
-        // member.location.coordinates = [latitude, longitude];
-        // member.location.updatedAt = Date.now();
-
-        let a= await fetchedMember.save();  
-        console.log('=====aa===============================');
-        console.log(a);
-        console.log('====================================');
+      if (!member) {
+        return res.status(404).json({ error: 'Member not found' });
       }
 
+      // Ensure user exists
+      // const user = await userModel.findById(userId);
+      // if (!user) {
+      //   return res.status(404).json({ error: 'User not found' });
+      // }
+      const location = {
+        type: 'Point',
+        coordinates: [latitude, longitude], // Ensure [longitude, latitude] order
+      };
 
-
-
-
-      // const updatedUser = await memberModel.findByIdAndUpdate(
-      //   memberId, // Replace this with the actual member's userId
-      //   {
-      //     $set: {
-      //       'location.coordinates': [latitude, longitude], // Use dot notation to update nested coordinates
-      //       'location.updatedAt': Date.now(), // Update the timestamp when location changes
-      //     },
-      //   },
-      //   // { new: true, runValidators: true } // Return /the updated document and ensure validation
-      // );
-      console.log(`    ${member?.name}  Location Updated !`);
-      console.log('locationDetails', locationDetails);
-
-      // let geoDecodedPlaces = await getAddressFromCoordinates(latitude, longitude)
-      // console.log('places :', geoDecodedPlaces);
-      // console.log(`  ....... Before adding  trackingHistoryModel .............`);
-
-
-      const newLocationHistory = new trackingHistoryModel({
+      // Create or update tracking history for the assignment
+      const trackingData = {
         memberId,
-        location: {
-          type: 'Point',
-          coordinates: [longitude, latitude],
+        // userId,
+        location,
+        addressDetails: {
+          preferredAddress: addressDetails?.preferredAddress || 'NOT FOUND',
+          address: addressDetails?.address || 'NOT FOUND',
+          locality: addressDetails?.locality || 'NOT FOUND',
+          street: addressDetails?.street || 'NOT FOUND',
+          neighborhood: addressDetails?.neighborhood || 'NOT FOUND',
+          region: addressDetails?.region || 'NOT FOUND',
+          district: addressDetails?.district || 'NOT FOUND',
+          country: addressDetails?.country || 'NOT FOUND',
+          postcode: addressDetails?.postcode || 'NOT FOUND',
+          landmarks: addressDetails?.landmarks || [],
         },
-        preferredAddress: locationDetails?.preferredAddress,
-        address: locationDetails?.address,
-        locality: locationDetails?.locality,
-        street: locationDetails?.street,
-        neighborhood: locationDetails?.neighborhood,
-        region: locationDetails?.region,
-        district: locationDetails?.district,
-        country: locationDetails?.country,
-        postcode: locationDetails?.postcode,
-        landmarks: locationDetails?.landmarks,
-      });
-      await newLocationHistory.save();
-      console.log(`  ....... Recorded Inserted !`);
+        timestamp: new Date(),
+        trackingType: 'scheduled',
+        assignmentId,
+        notes: notes || '',
+        isWithinGeofence: false, // Default; update logic for geofence if applicable
+      };
 
-      if (!fetchedMember) {
-        return res.status(404).json({ message: fetchedMember });
+      // Save the tracking history
+      const trackingHistory = new trackingHistoryModel(trackingData);
+      await trackingHistory.save();
+
+      res.status(201).json({
+        message: 'Tracking history updated successfully',
+        trackingHistory,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+
+  userLiveLocationUpdate: async (req, res) => {
+    try {
+      const memberId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
+
+      const {
+        latitude,
+        longitude,
+        addressDetails,
+        notes
+      } = req.body;
+
+      // Ensure the member exists
+      const member = await memberModel.findById(memberId);
+      if (!member) {
+        return res.status(404).json({ error: 'Member not found' });
       }
 
-      res.status(200).json({ message: "User updated successfully", user: fetchedMember });
+      // Create the location object
+      const location = {
+        type: 'Point',
+        coordinates: [latitude,longitude ], // Ensure [longitude, latitude] order
+      };
+
+      // Create or update tracking history for the live location
+      const trackingData = {
+        memberId,
+        location,
+        addressDetails: {
+          preferredAddress: addressDetails?.preferredAddress || 'NOT FOUND',
+          address: addressDetails?.address || 'NOT FOUND',
+          locality: addressDetails?.locality || 'NOT FOUND',
+          street: addressDetails?.street || 'NOT FOUND',
+          neighborhood: addressDetails?.neighborhood || 'NOT FOUND',
+          region: addressDetails?.region || 'NOT FOUND',
+          district: addressDetails?.district || 'NOT FOUND',
+          country: addressDetails?.country || 'NOT FOUND',
+          postcode: addressDetails?.postcode || 'NOT FOUND',
+          landmarks: addressDetails?.landmarks || [],
+        },
+        timestamp: new Date(),
+        trackingType: 'live',
+        notes: notes || '',
+        isWithinGeofence: false, // Default; update logic for geofence if applicable
+      };
+
+      // Save the tracking history
+      const trackingHistory = new trackingHistoryModel(trackingData);
+      await trackingHistory.save();
+
+      res.status(201).json({
+        message: 'Live location updated successfully',
+        trackingHistory,
+      });
     } catch (error) {
-      console.error("Error updating user:", error);
-      res.status(500).json({ message: "Error updating user", error: error.message });
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
     }
-  }
+  },
+
+
 
 
 

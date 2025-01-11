@@ -215,7 +215,7 @@ module.exports = {
                 userId: newMember?._id,
                 parentUserId: userId,
                 parentUserName: parentUser?.name,
-                memberName:newMember?.name
+                memberName: newMember?.name
               },
               process.env.JWT_SECRET, // Secret key from your environment variables
               { expiresIn: '360m' } // Token expiration time
@@ -1209,7 +1209,7 @@ module.exports = {
 
       const { memberIds } = req.body;
       const userId = req.userId;
-      const parentUserDetails = await userModel.findOne({ _id: userId});
+      const parentUserDetails = await userModel.findOne({ _id: userId });
 
 
       // Validate request
@@ -1217,7 +1217,7 @@ module.exports = {
         return res.status(400).json({ error: 'Invalid or missing memberIds' });
       }
 
-    
+
       // Prepare the FCM message payload
       // {
       //   "to": "<FCM_TOKEN>",
@@ -1227,7 +1227,7 @@ module.exports = {
       //   "priority": "high", // Necessary for immediate background processing
       //   "content_available": true
       // }
-      
+
       const payload = {
         notification: {
           title: 'SOS Alert',
@@ -1286,7 +1286,7 @@ module.exports = {
 
       const { memberIds } = req.body;
       const userId = req.userId;
-      const parentUserDetails = await userModel.findOne({ _id: userId});
+      const parentUserDetails = await userModel.findOne({ _id: userId });
 
 
       // Validate request
@@ -1294,7 +1294,7 @@ module.exports = {
         return res.status(400).json({ error: 'Invalid or missing memberIds' });
       }
 
-    
+
       // Prepare the FCM message payload
       // {
       //   "to": "<FCM_TOKEN>",
@@ -1304,7 +1304,7 @@ module.exports = {
       //   "priority": "high", // Necessary for immediate background processing
       //   "content_available": true
       // }
-      
+
       const payload = {
         notification: {
           title: 'Live Location',
@@ -1354,7 +1354,173 @@ module.exports = {
       console.error('Error sending requesting location:', error);
       return res.status(500).json({ error: 'Failed to request location notification', details: error.message });
     }
+  },
+
+
+
+
+
+
+
+
+
+
+
+  getUserMemberLiveTracking: async (req, res) => {
+    const { memberId } = req.params;
+    const { date } = req.query;
+
+
+
+    if (!memberId || !date) {
+      return res.status(400).json({ error: "Member ID and date are required" });
+    }
+
+    try {
+      // Parse the date and get the start and end of the day
+      const startOfDay = new Date(date);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(date);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
+      // Query database for locations within the specified date range
+      const locationsGroupedByLocality = await trackingHistoryModel.aggregate([
+        // Step 1: Match entries for the given memberId and day range
+        {
+          $match: {
+            memberId: mongoose.Types.ObjectId(memberId),
+            timestamp: { $gte: startOfDay, $lte: endOfDay }
+          }
+        },
+        // Step 2: Group by locality
+        {
+          $group: {
+            _id: "$locality", // Group by locality
+            // entries: { $push: "$$ROOT" }, // Include all documents in the group
+            count: { $sum: 1 }, // Count the number of entries for each locality
+            averageTimestamp: { $avg: { $toLong: "$timestamp" } },// Calculate average timestamp
+            locations: { $push: "$location.coordinates" }, // Include all location coordinates
+
+          }
+        },
+        // Step 3: Sort the groups by count or other criteria
+        {
+          $sort: { count: -1 } // Sort by count in descending order
+        }
+      ]);
+
+      const resultWithDates = locationsGroupedByLocality.map(group => ({
+        ...group,
+        averageTimestamp: new Date(group.averageTimestamp).toISOString() // Convert to ISO Date string
+      }));
+
+      console.log(resultWithDates);
+
+      let finalData = resultWithDates.filter(item => item._id != null)
+
+      console.log(locationsGroupedByLocality);
+
+      res.json({
+        status: 200,
+        count: locationsGroupedByLocality.length,
+        data: finalData,
+        message: "Location found successfully"
+      });
+    } catch (error) {
+      console.error("Error fetching locations: ", error);
+      res.status(500).json({ error: "An error occurred while fetching locations." });
+    }
+  },
+
+
+
+
+  fetchUserLiveLocation: async (req, res) => {
+    try {
+
+      const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
+
+      const { memberId ,selectedDate} = req.params; // Get the user ID from the request (assuming it's available in the request object)
+      console.log(' memberId -----', memberId);
+
+
+        
+      const givenDate = new Date(selectedDate); // Replace with your desired date
+      const nextDay = new Date(givenDate);
+      nextDay.setDate(nextDay.getDate() + 1); // Calculate the next day
+            const liveLocation = await trackingHistoryModel
+      .find({
+          memberId,
+          trackingType: 'live',
+          timestamp: {
+              $gte: givenDate,
+              $lt: nextDay // Less than the start of the next day
+          }
+      })
+      .sort({ timestamp: -1 })
+
+  
+      if (!liveLocation) {
+        return res.status(404).json({ error: 'Live location not found for this member' });
+      }
+
+      // Return the live location tracking data
+      res.status(200).json({
+        message: 'Live location fetched successfully',
+        liveLocation
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+
+  fetchUserAssignmentLocation: async (req, res) => {
+    try {
+
+      const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
+
+      const { memberId ,selectedDate} = req.params; // Get the user ID from the request (assuming it's available in the request object)
+      console.log(' memberId -----', memberId);
+
+      const givenDate = new Date(selectedDate); // Replace with your desired date
+      const nextDay = new Date(givenDate);
+      nextDay.setDate(nextDay.getDate() + 1); // Calculate the next day
+            const assignmentLocation = await trackingHistoryModel
+      .find({
+          memberId,
+          trackingType: 'scheduled',
+          timestamp: {
+              $gte: givenDate,
+              $lt: nextDay // Less than the start of the next day
+          }
+      })
+      .sort({ timestamp: -1 })
+      .populate('assignmentId');
+  
+      if (!assignmentLocation) {
+        return res.status(404).json({ error: 'Live location not found for this member' });
+      }
+
+      // Return the live location tracking data
+      res.status(200).json({
+        message: 'Live location fetched successfully',
+        count:assignmentLocation.length,
+        assignmentLocation,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
+
+
+
+
+
+
 
 
 }

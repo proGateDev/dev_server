@@ -19,18 +19,56 @@ const locationHistorySchema = new mongoose.Schema({
   },
 
   // Add address fields to the schema
-  preferredAddress: { type: String, default: 'NOT FOUND' },
-  address: { type: String, default: 'NOT FOUND' },
-  locality: { type: String, default: 'NOT FOUND' },
-  street: { type: String, default: 'NOT FOUND' },
-  neighborhood: { type: String, default: 'NOT FOUND' },
-  region: { type: String, default: 'NOT FOUND' },
-  district: { type: String, default: 'NOT FOUND' },
-  country: { type: String, default: 'NOT FOUND' },
-  postcode: { type: String, default: 'NOT FOUND' },
-  landmarks: { type: Array, default: [] },
+  addressDetails: {
+    preferredAddress: { type: String, default: 'NOT FOUND' },
+    address: { type: String, default: 'NOT FOUND' },
+    locality: { type: String, default: 'NOT FOUND' },
+    street: { type: String, default: 'NOT FOUND' },
+    neighborhood: { type: String, default: 'NOT FOUND' },
+    region: { type: String, default: 'NOT FOUND' },
+    district: { type: String, default: 'NOT FOUND' },
+    country: { type: String, default: 'NOT FOUND' },
+    postcode: { type: String, default: 'NOT FOUND' },
+    landmarks: { type: Array, default: [] },
+  },
 
   timestamp: { type: Date, default: Date.now },
+
+
+
+
+
+  // Type of tracking (scheduled or live)
+  trackingType: {
+    type: String,
+    enum: ['scheduled', 'live'],
+    default: 'live', // Default is live tracking
+  },
+
+  // Assignment ID for scheduled tracking
+  assignmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'assignment',
+    default: null, // Default is null for live tracking
+  },
+
+  // Additional optional fields
+  notes: { type: String, default: '' }, // For any custom information about the tracking
+  isWithinGeofence: { type: Boolean, default: false },
+  speed: { type: Number, default: null }, // Speed in km/h or m/s
+  batteryStatus: { type: Number, min: 0, max: 100, default: null }, // Battery percentage
+  accuracy: { type: Number, default: null }, // Accuracy in meters
+  event: {
+    type: String,
+    enum: ['entry', 'exit', 'check-in', 'check-out', 'update'],
+    default: 'update',
+  },
+  deviceId: { type: String, default: null },
+  isSOS: { type: Boolean, default: false },
+  trackingDuration: { type: Number, default: null }, // Duration in seconds
+
+
+
 });
 
 // Create a 2dsphere index for efficient geospatial queries
