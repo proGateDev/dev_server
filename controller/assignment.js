@@ -568,6 +568,50 @@ module.exports = {
             return res.status(500).json({ error: 'Failed to assign location' });
         }
     }
+    ,
+
+
+    memberStartLiveTracker: async (req, res) => {
+        try {
+            const memberId = req.userId;  // Get the memberId from the authenticated user
+
+
+
+
+            // Fetch member details
+            const memberDetails = await memberModel.findById(memberId);
+            if (!memberDetails) {
+                return res.status(404).json({ error: 'Member not found' });
+            }
+
+            // Fetch parent user details (optional check if member has a parent user)
+            if (!memberDetails.parentUser) {
+                return res.status(404).json({ error: 'Parent user not found for this member' });
+            }
+
+            const parentUser = await userModel.findById(memberDetails.parentUser);
+            if (!parentUser || !parentUser.fcmToken) {
+                return res.status(404).json({ error: 'Parent user or FCM token not found' });
+            }
+
+            // Send notification to the parent user
+            sendFirebaseNotification({
+                fcmToken: parentUser.fcmToken,
+                title: `${memberDetails.name} Has Started  Live Tracker !`,
+                body: `${memberDetails.name} Is Being Tracked In The Background.`,
+            });
+
+            // Return success response
+            return res.status(200).json({
+                message: 'Notification sent successfully',
+
+            });
+
+        } catch (error) {
+            console.error("Error assigning location:", error);
+            return res.status(500).json({ error: 'Failed to assign location' });
+        }
+    }
 
 
 

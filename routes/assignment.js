@@ -30,7 +30,6 @@ router.post('/member/daily', checkUserToken,trackController.getMemberDailyAssign
 
 //================================ Notifcation ===================================
 router.get('/member-start-assignment/:assignmentId', checkUserToken,trackController.memberStartAssignment);
-
-
+router.get('/member-start-live-tracking', checkUserToken,trackController.memberStartLiveTracker)
 
 module.exports = router;
