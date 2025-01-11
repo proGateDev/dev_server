@@ -307,7 +307,7 @@ module.exports = {
             // console.log('userId -------:', userId);
             const member = await memberModel.findById({ _id: userId });
             // console.log('member -------:', member);
-            
+
             const parentUser = await userModel.findById({ _id: member?.parentUser });
             console.log('member?.fcmToken -------:', member?.fcmToken);
 
@@ -315,17 +315,17 @@ module.exports = {
 
             sendFirebaseNotification({
                 fcmToken: member?.fcmToken,
-                
+
                 title: `You have Completed : ${assignmentDetails.eventName}`,
-                body : `You have arrived @ ${assignmentDetails.locationName}`
+                body: `You have arrived @ ${assignmentDetails.locationName}`
             })
 
 
 
             sendFirebaseNotification({
                 fcmToken: parentUser?.fcmToken,
-                title: `${ member?.name} has completed ${assignmentDetails.eventName}`,
-                body : `${ member?.name} is  @ ${assignmentDetails.locationName}`
+                title: `${member?.name} has completed ${assignmentDetails.eventName}`,
+                body: `${member?.name} is  @ ${assignmentDetails.locationName}`
             })
 
 
@@ -371,7 +371,7 @@ module.exports = {
             if (!memberAssignments || memberAssignments.length === 0) {
                 return res.status(404).json({ message: 'No assignments found for the given period' });
             }
-            console.log('memberAssignments', memberAssignments);
+            // console.log('memberAssignments', memberAssignments);
 
             // Prepare the member's general information
             const memberInfo = {
@@ -510,7 +510,66 @@ module.exports = {
             console.error('Error fetching user assignments:', error);
             res.status(500).json({ error: 'Internal Server Error' });
         }
+    },
+
+
+
+    memberStartAssignment: async (req, res) => {
+        try {
+            const memberId = req.userId;  // Get the memberId from the authenticated user
+            const { assignmentId } = req.params;  // Extract the assignmentId from the request parameters
+
+            // Validate if assignmentId is provided
+            if (!assignmentId) {
+                return res.status(400).json({ error: 'Assignment ID is required' });
+            }
+
+            // Fetch assignment details
+            const assignmentDetails = await assignmentModel.findById(assignmentId);
+            if (!assignmentDetails) {
+                return res.status(404).json({ error: 'Assignment not found' });
+            }
+
+            // Fetch member details
+            const memberDetails = await memberModel.findById(memberId);
+            if (!memberDetails) {
+                return res.status(404).json({ error: 'Member not found' });
+            }
+
+            // Fetch parent user details (optional check if member has a parent user)
+            if (!memberDetails.parentUser) {
+                return res.status(404).json({ error: 'Parent user not found for this member' });
+            }
+
+            const parentUser = await userModel.findById(memberDetails.parentUser);
+            if (!parentUser || !parentUser.fcmToken) {
+                return res.status(404).json({ error: 'Parent user or FCM token not found' });
+            }
+
+            // Send notification to the parent user
+            sendFirebaseNotification({
+                fcmToken: parentUser.fcmToken,
+                title: `${memberDetails.name} Has Started Trip: ${assignmentDetails.eventName} !`,
+                body: `${memberDetails.name} Is Heading Towards: ${assignmentDetails.locationName}`,
+            });
+
+            // Return success response
+            return res.status(200).json({
+                message: 'Notification sent successfully',
+                assignmentDetails: {
+                    eventName: assignmentDetails.eventName,
+                    locationName: assignmentDetails.locationName,
+                    memberName: memberDetails.name,
+                },
+            });
+
+        } catch (error) {
+            console.error("Error assigning location:", error);
+            return res.status(500).json({ error: 'Failed to assign location' });
+        }
     }
+
+
 
 
 

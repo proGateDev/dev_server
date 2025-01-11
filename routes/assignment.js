@@ -27,4 +27,10 @@ router.patch('/member', checkUserToken,trackController.patchAssignment);
 
 router.post('/member/daily', checkUserToken,trackController.getMemberDailyAssignments);
 
+
+//================================ Notifcation ===================================
+router.get('/member-start-assignment/:assignmentId', checkUserToken,trackController.memberStartAssignment);
+
+
+
 module.exports = router;

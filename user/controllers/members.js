@@ -1442,7 +1442,7 @@ module.exports = {
       const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
 
       const { memberId ,selectedDate} = req.params; // Get the user ID from the request (assuming it's available in the request object)
-      console.log(' memberId -----', memberId);
+      console.log(' selectedDate -----', selectedDate);
 
 
         
@@ -1468,6 +1468,8 @@ module.exports = {
       // Return the live location tracking data
       res.status(200).json({
         message: 'Live location fetched successfully',
+        count:liveLocation.length,
+
         liveLocation
       });
     } catch (error) {
@@ -1477,46 +1479,101 @@ module.exports = {
   },
 
 
+  // fetchUserAssignmentLocation: async (req, res) => {
+  //   try {
+
+  //     const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
+
+  //     const { memberId ,selectedDate} = req.params; // Get the user ID from the request (assuming it's available in the request object)
+  //     console.log(' selectedDate -----', selectedDate);
+
+  //     const givenDate = new Date(selectedDate); // Replace with your desired date
+  //     const nextDay = new Date(givenDate);
+  //     nextDay.setDate(nextDay.getDate() + 1); // Calculate the next day
+  //           const assignmentLocation = await trackingHistoryModel
+  //     .find({
+  //         memberId,
+  //         trackingType: 'scheduled',
+  //         timestamp: {
+  //             $gte: givenDate,
+  //             $lt: nextDay // Less than the start of the next day
+  //         }
+  //     })
+  //     .sort({ timestamp: -1 })
+  //     .populate('assignmentId');
+  
+  //     if (!assignmentLocation) {
+  //       return res.status(404).json({ error: 'Assignments location not found for this member' });
+  //     }
+
+  //     // Return the live location tracking data
+  //     res.status(200).json({
+  //       message: 'Assignments location fetched successfully',
+  //       count:assignmentLocation.length,
+  //       assignmentLocation,
+  //     });
+  //   } catch (error) {
+  //     console.error(error);
+  //     res.status(500).json({ error: 'Internal server error' });
+  //   }
+  // }
+
   fetchUserAssignmentLocation: async (req, res) => {
     try {
-
-      const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
-
-      const { memberId ,selectedDate} = req.params; // Get the user ID from the request (assuming it's available in the request object)
-      console.log(' memberId -----', memberId);
-
+      const userId = req.userId; // Get the user ID from the request
+      const { memberId, selectedDate } = req.params; // Get memberId and selectedDate from request parameters
+      console.log('selectedDate -----', selectedDate);
+  
       const givenDate = new Date(selectedDate); // Replace with your desired date
       const nextDay = new Date(givenDate);
       nextDay.setDate(nextDay.getDate() + 1); // Calculate the next day
-            const assignmentLocation = await trackingHistoryModel
-      .find({
+  
+      // Fetch assignments' locations for the member within the selected date range
+      const assignmentLocation = await trackingHistoryModel
+        .find({
           memberId,
           trackingType: 'scheduled',
           timestamp: {
-              $gte: givenDate,
-              $lt: nextDay // Less than the start of the next day
+            $gte: givenDate,
+            $lt: nextDay // Less than the start of the next day
           }
-      })
-      .sort({ timestamp: -1 })
-      .populate('assignmentId');
+        })
+        .sort({ timestamp: -1 })
+        .populate('assignmentId'); // Populating the assignmentId to get assignment details
   
-      if (!assignmentLocation) {
-        return res.status(404).json({ error: 'Live location not found for this member' });
+      if (!assignmentLocation || assignmentLocation.length === 0) {
+        return res.status(404).json({ error: 'Assignments location not found for this member' });
       }
-
-      // Return the live location tracking data
+  
+      // Group the coordinates by assignmentId and merge them into one assignment object
+      const groupedAssignments = assignmentLocation.reduce((acc, item) => {
+        const assignmentId = item.assignmentId._id;
+        if (!acc[assignmentId]) {
+          acc[assignmentId] = {
+            assignmentId: assignmentId,
+            eventName: item.assignmentId.eventName,
+            trackingCoordinates: []
+          };
+        }
+        acc[assignmentId].trackingCoordinates.push(item.location.coordinates);
+        return acc;
+      }, {});
+  
+      // Convert the groupedAssignments object to an array
+      const assignmentDetails = Object.values(groupedAssignments);
+  
+      // Return the assignment location data with assignment details and tracking locations
       res.status(200).json({
-        message: 'Live location fetched successfully',
-        count:assignmentLocation.length,
-        assignmentLocation,
+        message: 'Assignments location fetched successfully',
+        assignmentDetails, // Including assignment details with tracking coordinates
       });
+  
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
-
-
+  
 
 
 

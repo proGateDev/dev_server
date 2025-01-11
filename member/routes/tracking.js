@@ -9,4 +9,9 @@ router.put("/",checkUserToken, controller.updateMemberLocation);
 router.post("/records",checkUserToken, controller.postMemberLocation); 
 router.get("/records",checkUserToken, controller.getMemberLocations); 
 
+router.get("/records",checkUserToken, controller.getMemberLocations); 
+
+
+
 module.exports = router;
+
