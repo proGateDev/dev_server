@@ -18,8 +18,8 @@ router.get("/list", checkUserToken, controller.getUserMembers);
 router.get('/:memberId', checkUserToken, controller.getUserMemberById);
 router.delete('/:memberId', controller.deleteUserMemberById);
 router.get('/:memberId/daily-transit', controller.getUserMemberDailyTransit);
-router.post('/activity-frequency', checkUserToken,controller.getUserMemberDailyTransitActivityFrequency);
-router.post('/activity-frequency_', checkUserToken,controller.getUserMemberDailyTransitActivityFrequency_);
+router.post('/activity-frequency', checkUserToken, controller.getUserMemberDailyTransitActivityFrequency);
+router.post('/activity-frequency_', checkUserToken, controller.getUserMemberDailyTransitActivityFrequency_);
 
 
 router.get("/attendance/today", checkUserToken, controller.getTodayAttendance_);
@@ -40,8 +40,9 @@ router.get('/:memberId/live-tracking', controller.getUserMemberLiveTracking);
 
 
 
-router.get("/live-location-tracking/:memberId/:selectedDate",checkUserToken, controller.fetchUserLiveLocation);   // Update
-router.get("/assignment-location-tracking/:memberId/:selectedDate",checkUserToken, controller.fetchUserAssignmentLocation);   // Update
+router.get("/live-location-tracking/:memberId/:selectedDate", checkUserToken, controller.fetchUserLiveLocation);   // Update
+router.post("/live-location-tracking-insight-report", checkUserToken, controller.fetchUserLiveLocationInsightReport);   // Update
+router.get("/assignment-location-tracking/:memberId/:selectedDate", checkUserToken, controller.fetchUserAssignmentLocation);   // Update
 
 
 

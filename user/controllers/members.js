@@ -1479,6 +1479,10 @@ module.exports = {
   },
 
 
+
+
+
+
   // fetchUserAssignmentLocation: async (req, res) => {
   //   try {
 
@@ -1521,7 +1525,7 @@ module.exports = {
   fetchUserAssignmentLocation: async (req, res) => {
     try {
       const userId = req.userId; // Get the user ID from the request
-      const { memberId, selectedDate } = req.params; // Get memberId and selectedDate from request parameters
+      const { memberId, selectedDate ,payload} = req.params; // Get memberId and selectedDate from request parameters
       console.log('selectedDate -----', selectedDate);
   
       const givenDate = new Date(selectedDate); // Replace with your desired date
@@ -1572,7 +1576,90 @@ module.exports = {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });
     }
-  }
+  },
+
+
+
+
+
+  fetchUserLiveLocationInsightReport: async (req, res) => {
+    try {
+      const userId = req.userId; // Assuming userId is available in the request object
+      const { memberId, selectedDate,locationType  } = req.body; // Extract memberId and selectedDate from request params
+  
+      console.log('Selected Date:', selectedDate);
+    
+      // Parse the given date and calculate the next day
+      const givenDate = new Date(selectedDate);
+      const nextDay = new Date(givenDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+  
+      // Fetch live location data from the database
+      const liveLocation = await trackingHistoryModel
+        .find({
+          memberId,
+          trackingType: 'live',
+          timestamp: {
+            $gte: givenDate,
+            $lt: nextDay, // Less than the start of the next day
+          },
+        })
+        .sort({ timestamp: -1 });
+  
+      // Handle case where no live location data is found
+      if (!liveLocation || liveLocation.length === 0) {
+        return res.status(404).json({ error: 'Live location not found for this member' });
+      }
+  
+      const counts = liveLocation.reduce((acc, location) => {
+        // Check based on locationType
+        console.log('locationType',locationType);
+        
+        if (locationType === 'locality') {
+          // Use locality if locationType is 'locality'
+          const locality = location.addressDetails?.locality || 'Unknown'; // Default to 'Unknown' if locality is missing
+          acc[locality] = (acc[locality] || 0) + 1;
+        } else if (locationType === 'district') {
+          // Use district if locationType is 'district'
+          const district = location.addressDetails?.district || 'Unknown'; // Default to 'Unknown' if district is missing
+          acc[district] = (acc[district] || 0) + 1;
+        }else if (locationType === 'street') {
+          // Use district if locationType is 'district'
+          const district = location.addressDetails?.street || 'Unknown'; // Default to 'Unknown' if district is missing
+          acc[district] = (acc[district] || 0) + 1;
+        }else if (locationType === 'neighborhood') {
+          // Use district if locationType is 'district'
+          const district = location.addressDetails?.neighborhood || 'Unknown'; // Default to 'Unknown' if district is missing
+          acc[district] = (acc[district] || 0) + 1;
+        }
+
+      
+        return acc;
+      }, {});
+      
+      const totalCount = liveLocation.length;
+  
+      const pieChartData = Object.entries(counts).map(([country, count]) => ({
+        name: country,
+        count, // Include the frequency of this country
+        percentage: ((count / totalCount) * 100).toFixed(2), // Convert count to percentage
+        color: `#${Math.floor(Math.random() * 16777215).toString(16)}`, // Random color
+        legendFontColor: '#333',
+        legendFontSize: 14,
+      }));
+  
+      // Return the live location tracking data along with pie chart data
+      res.status(200).json({
+        message: 'Live location fetched successfully',
+        // count: liveLocation.length,
+        pieChartData,
+        latestAddressDetails: liveLocation[0].addressDetails, // Include the latest address details
+      });
+    } catch (error) {
+      console.error('Error fetching live location:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  },
   
 
 
