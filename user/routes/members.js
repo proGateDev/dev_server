@@ -41,9 +41,9 @@ router.get('/:memberId/live-tracking', controller.getUserMemberLiveTracking);
 
 
 router.get("/live-location-tracking/:memberId/:selectedDate", checkUserToken, controller.fetchUserLiveLocation);   // Update
-router.post("/live-location-tracking-insight-report", checkUserToken, controller.fetchUserLiveLocationInsightReport);   // Update
 router.get("/assignment-location-tracking/:memberId/:selectedDate", checkUserToken, controller.fetchUserAssignmentLocation);   // Update
 
+router.post("/live-location-tracking-insight-report", checkUserToken, controller.fetchUserLiveLocationInsightReport);   // Update
 
 
 

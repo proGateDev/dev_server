@@ -1441,26 +1441,26 @@ module.exports = {
 
       const userId = req.userId; // Get the user ID from the request (assuming it's available in the request object)
 
-      const { memberId ,selectedDate} = req.params; // Get the user ID from the request (assuming it's available in the request object)
+      const { memberId, selectedDate } = req.params; // Get the user ID from the request (assuming it's available in the request object)
       console.log(' selectedDate -----', selectedDate);
 
 
-        
+
       const givenDate = new Date(selectedDate); // Replace with your desired date
       const nextDay = new Date(givenDate);
       nextDay.setDate(nextDay.getDate() + 1); // Calculate the next day
-            const liveLocation = await trackingHistoryModel
-      .find({
+      const liveLocation = await trackingHistoryModel
+        .find({
           memberId,
           trackingType: 'live',
           timestamp: {
-              $gte: givenDate,
-              $lt: nextDay // Less than the start of the next day
+            $gte: givenDate,
+            $lt: nextDay // Less than the start of the next day
           }
-      })
-      .sort({ timestamp: -1 })
+        })
+        .sort({ timestamp: -1 })
 
-  
+
       if (!liveLocation) {
         return res.status(404).json({ error: 'Live location not found for this member' });
       }
@@ -1468,7 +1468,7 @@ module.exports = {
       // Return the live location tracking data
       res.status(200).json({
         message: 'Live location fetched successfully',
-        count:liveLocation.length,
+        count: liveLocation.length,
 
         liveLocation
       });
@@ -1505,7 +1505,7 @@ module.exports = {
   //     })
   //     .sort({ timestamp: -1 })
   //     .populate('assignmentId');
-  
+
   //     if (!assignmentLocation) {
   //       return res.status(404).json({ error: 'Assignments location not found for this member' });
   //     }
@@ -1525,13 +1525,13 @@ module.exports = {
   fetchUserAssignmentLocation: async (req, res) => {
     try {
       const userId = req.userId; // Get the user ID from the request
-      const { memberId, selectedDate ,payload} = req.params; // Get memberId and selectedDate from request parameters
+      const { memberId, selectedDate, payload } = req.params; // Get memberId and selectedDate from request parameters
       console.log('selectedDate -----', selectedDate);
-  
+
       const givenDate = new Date(selectedDate); // Replace with your desired date
       const nextDay = new Date(givenDate);
       nextDay.setDate(nextDay.getDate() + 1); // Calculate the next day
-  
+
       // Fetch assignments' locations for the member within the selected date range
       const assignmentLocation = await trackingHistoryModel
         .find({
@@ -1544,11 +1544,11 @@ module.exports = {
         })
         .sort({ timestamp: -1 })
         .populate('assignmentId'); // Populating the assignmentId to get assignment details
-  
+
       if (!assignmentLocation || assignmentLocation.length === 0) {
         return res.status(404).json({ error: 'Assignments location not found for this member' });
       }
-  
+
       // Group the coordinates by assignmentId and merge them into one assignment object
       const groupedAssignments = assignmentLocation.reduce((acc, item) => {
         const assignmentId = item.assignmentId._id;
@@ -1562,16 +1562,16 @@ module.exports = {
         acc[assignmentId].trackingCoordinates.push(item.location.coordinates);
         return acc;
       }, {});
-  
+
       // Convert the groupedAssignments object to an array
       const assignmentDetails = Object.values(groupedAssignments);
-  
+
       // Return the assignment location data with assignment details and tracking locations
       res.status(200).json({
         message: 'Assignments location fetched successfully',
         assignmentDetails, // Including assignment details with tracking coordinates
       });
-  
+
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: 'Internal server error' });
@@ -1585,36 +1585,66 @@ module.exports = {
   fetchUserLiveLocationInsightReport: async (req, res) => {
     try {
       const userId = req.userId; // Assuming userId is available in the request object
-      const { memberId, selectedDate,locationType  } = req.body; // Extract memberId and selectedDate from request params
-  
+      const { memberId, selectedDate, locationType } = req.body; // Extract memberId and selectedDate from request params
+
       console.log('Selected Date:', selectedDate);
-    
+
       // Parse the given date and calculate the next day
       const givenDate = new Date(selectedDate);
       const nextDay = new Date(givenDate);
       nextDay.setDate(nextDay.getDate() + 1);
-  
+      const memberDetails = await memberModel
+        .findOne({ _id: memberId })
       // Fetch live location data from the database
       const liveLocation = await trackingHistoryModel
         .find({
           memberId,
           trackingType: 'live',
           timestamp: {
-            $gte: givenDate,
-            $lt: nextDay, // Less than the start of the next day
+            $gte: givenDate, // Greater than or equal to the given date
+            $lt: nextDay,    // Less than the start of the next day
           },
         })
-        .sort({ timestamp: -1 });
-  
+        .sort({ timestamp: -1 }) // Sort in descending order by timestamp
+
+
+
+
+      const downloadReportData = liveLocation.map((item) => {
+        const formattedTimestamp = new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }).format(new Date(item.timestamp));
+        return {
+
+          address: item.addressDetails.address,
+          locality: item.addressDetails.locality,
+          street: item.addressDetails.street,
+          neighborhood: item.addressDetails.neighborhood,
+          region: item.addressDetails.region,
+          district: item.addressDetails.district,
+          country: item.addressDetails.country,
+          timestamp: formattedTimestamp,
+        };
+      });
+
+
+
+
       // Handle case where no live location data is found
       if (!liveLocation || liveLocation.length === 0) {
         return res.status(404).json({ error: 'Live location not found for this member' });
       }
-  
+
       const counts = liveLocation.reduce((acc, location) => {
         // Check based on locationType
-        console.log('locationType',locationType);
-        
+        console.log('locationType', locationType);
+
         if (locationType === 'locality') {
           // Use locality if locationType is 'locality'
           const locality = location.addressDetails?.locality || 'Unknown'; // Default to 'Unknown' if locality is missing
@@ -1623,22 +1653,22 @@ module.exports = {
           // Use district if locationType is 'district'
           const district = location.addressDetails?.district || 'Unknown'; // Default to 'Unknown' if district is missing
           acc[district] = (acc[district] || 0) + 1;
-        }else if (locationType === 'street') {
+        } else if (locationType === 'street') {
           // Use district if locationType is 'district'
           const district = location.addressDetails?.street || 'Unknown'; // Default to 'Unknown' if district is missing
           acc[district] = (acc[district] || 0) + 1;
-        }else if (locationType === 'neighborhood') {
+        } else if (locationType === 'neighborhood') {
           // Use district if locationType is 'district'
           const district = location.addressDetails?.neighborhood || 'Unknown'; // Default to 'Unknown' if district is missing
           acc[district] = (acc[district] || 0) + 1;
         }
 
-      
+
         return acc;
       }, {});
-      
+
       const totalCount = liveLocation.length;
-  
+
       const pieChartData = Object.entries(counts).map(([country, count]) => ({
         name: country,
         count, // Include the frequency of this country
@@ -1647,20 +1677,20 @@ module.exports = {
         legendFontColor: '#333',
         legendFontSize: 14,
       }));
-  
+
       // Return the live location tracking data along with pie chart data
       res.status(200).json({
         message: 'Live location fetched successfully',
-        // count: liveLocation.length,
         pieChartData,
-        latestAddressDetails: liveLocation[0].addressDetails, // Include the latest address details
+        downloadReportData
+
       });
     } catch (error) {
       console.error('Error fetching live location:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   },
-  
+
 
 
 
