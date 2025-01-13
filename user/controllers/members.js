@@ -263,6 +263,7 @@ module.exports = {
             };
 
             await sendMail(messageData);
+            // console.log('verification link ----:', verificationLink);
 
 
             // sendNotification(userId, `You have added a new member: ${memberData?.name}`);
